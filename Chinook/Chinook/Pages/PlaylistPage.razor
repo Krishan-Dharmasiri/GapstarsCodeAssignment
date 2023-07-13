@@ -73,19 +73,37 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        CurrentUserId = await GetUserId();
+        try
+        {
+            // Get the current user id
+            CurrentUserId = await GetUserId();
 
-        await InvokeAsync(StateHasChanged);
-        
-        Playlist = await PlaylistPageDataService.GetPlaylistByUserIdAndPlaylistIdAsync(CurrentUserId, PlaylistId);
+            await InvokeAsync(StateHasChanged);
+
+            // Get the playlist for the current user given the playlist id
+            Playlist = await PlaylistPageDataService.GetPlaylistByUserIdAndPlaylistIdAsync(CurrentUserId, PlaylistId);
+        }
+        catch(Exception ex)
+        {
+            throw new Exception($"An error occured while initializing PlaylistPage. Error : {ex.Message}");
+        }
+
 
     }
 
     private async Task<string> GetUserId()
     {
-        var user = (await authenticationState).User;
-        var userId = user.FindFirst(u => u.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
-        return userId;
+        try
+        {
+            var user = (await authenticationState).User;
+            var userId = user.FindFirst(u => u.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
+            return userId;
+        }
+        catch(Exception ex)
+        {
+            throw new Exception($"An error occured while fetching the current user. Error : {ex.Message}");
+        }
+
     }
 
     private void FavoriteTrack(long trackId)

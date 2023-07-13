@@ -12,5 +12,6 @@ namespace Chinook.Services.Interfaces
         Task<long> GetLastPlaylistIdAsync();
         Task AddPlaylistAsync(string playListName, long playListId);
         Task AddUserPlaylistAsync(string userId, long playlistId);
+        Task<long> GetDefaultPlaylistIdAsync(string userId);
     }
 }

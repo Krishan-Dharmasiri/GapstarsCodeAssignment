@@ -76,30 +76,63 @@ else
     private long SelectedPlaylistId;
     private string SelectedPlayListName;
 
+
     protected override async Task OnInitializedAsync()
     {
-        await InvokeAsync(StateHasChanged);
-        CurrentUserId = await GetUserId();
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+            CurrentUserId = await GetUserId();
 
-        Artist = await ArtistPageDataService.GetArtistByIdAsync(ArtistId);
+            // Get the Artist based on the Id
+            Artist = await ArtistPageDataService.GetArtistByIdAsync(ArtistId);
 
-        Tracks = await ArtistPageDataService.GetTracksByUserAndArtistAsync(CurrentUserId, ArtistId);
+            // Gets Tracks that are available in the current user's playlists
+            Tracks = await ArtistPageDataService.GetTracksByUserAndArtistAsync(CurrentUserId, ArtistId);
 
-        Playlists = await ArtistPageDataService.GetPlaylistsByUserAsync(CurrentUserId);
+            // Gets the playlists that belong to the current user
+            Playlists = await ArtistPageDataService.GetPlaylistsByUserAsync(CurrentUserId);
+        }
+        catch(Exception ex)
+        {
+            throw new Exception($"An Error occued while initializing ArtistPage. Error : {ex.Message}");
+        }
 
     }
 
     private async Task<string> GetUserId()
     {
-        var user = (await authenticationState).User;
-        var userId = user.FindFirst(u => u.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
-        return userId;
+        try
+        {
+            var user = (await authenticationState).User;
+            var userId = user.FindFirst(u => u.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
+            return userId;
+        }
+        catch(Exception ex)
+        {
+            throw new Exception($"An error occured while getting the current user. Error : {ex.Message}");
+        }
+
     }
 
-    private void FavoriteTrack(long trackId)
+    private async void FavoriteTrack(long trackId)
     {
-        var track = Tracks.FirstOrDefault(t => t.TrackId == trackId);
-        InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} added to playlist Favorites.";
+        try
+        {
+            // Get the playlist Id of the "My favorite tracks" playlist
+            var defaultPlaylistId = await ArtistPageDataService.GetDefaultPlaylistIdAsync(CurrentUserId);
+
+            // Add the selected track into the "My favorite tracks" playlist
+            await ArtistPageDataService.AddPlaylistTrackAsync(defaultPlaylistId, trackId);
+
+            var track = Tracks.FirstOrDefault(t => t.TrackId == trackId);
+            InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} added to playlist Favorites.";
+        }
+        catch(Exception ex)
+        {
+            throw new Exception($"An error occured while adding the track to the favorite playlist. Error : {ex.Message}");
+        }
+
     }
 
     private void UnfavoriteTrack(long trackId)
@@ -117,40 +150,49 @@ else
 
     private async void AddTrackToPlaylist()
     {
-        CloseInfoMessage();
-
-        // When user selects an existing playlist
-        if(SelectedPlaylistId != 0)
+        try
         {
-            //Get the selected playlist name
-            SelectedPlayListName = Playlists.FirstOrDefault(p => p.PlaylistId == SelectedPlaylistId).Name;
+            CloseInfoMessage();
 
-            // Add the record into the DB
-            await ArtistPageDataService.AddPlaylistTrackAsync(SelectedPlaylistId, SelectedTrack.TrackId);
+            // When user selects an existing playlist
+            if (SelectedPlaylistId != 0)
+            {
+                //Get the selected playlist name
+                SelectedPlayListName = Playlists.FirstOrDefault(p => p.PlaylistId == SelectedPlaylistId).Name;
 
-            InfoMessage = $"Track {Artist.Name} - {SelectedTrack.AlbumTitle} - {SelectedTrack.TrackName} added to playlist {SelectedPlayListName}.";
+                // Add the record into the DB
+                await ArtistPageDataService.AddPlaylistTrackAsync(SelectedPlaylistId, SelectedTrack.TrackId);
 
+                InfoMessage = $"Track {Artist.Name} - {SelectedTrack.AlbumTitle} - {SelectedTrack.TrackName} added to playlist {SelectedPlayListName}.";
+
+            }
+
+            // When user types a new playlist
+            if (!string.IsNullOrEmpty(NewPlaylistName))
+            {
+
+                long newId = await ArtistPageDataService.GetLastPlaylistIdAsync() + 1;
+
+                await ArtistPageDataService.AddPlaylistAsync(NewPlaylistName, newId);
+
+                await ArtistPageDataService.AddUserPlaylistAsync(CurrentUserId, newId);
+
+                await ArtistPageDataService.AddPlaylistTrackAsync(newId, SelectedTrack.TrackId);
+
+                InfoMessage = $"Track {Artist.Name} - {SelectedTrack.AlbumTitle} - {SelectedTrack.TrackName} added to playlist {NewPlaylistName}.";
+
+                // Notify the NavMenu componet so it can refresh and get the newly added Playlist
+                CommonDataService.InvokeRefreshNavMenu();
+            }
+
+            PlaylistDialog.Close();
+        }
+        catch(Exception ex)
+        {
+            throw new Exception($"An error occured while adding a track to playlist. Error : {ex.Message}");
         }
 
-        // When user types a new playlist
-        if(!string.IsNullOrEmpty(NewPlaylistName))
-        {
-
-            long newId = await ArtistPageDataService.GetLastPlaylistIdAsync() + 1;
-
-            await ArtistPageDataService.AddPlaylistAsync(NewPlaylistName, newId);
-
-            await ArtistPageDataService.AddUserPlaylistAsync(CurrentUserId, newId);
-
-            await ArtistPageDataService.AddPlaylistTrackAsync(newId, SelectedTrack.TrackId);
-
-            InfoMessage = $"Track {Artist.Name} - {SelectedTrack.AlbumTitle} - {SelectedTrack.TrackName} added to playlist {NewPlaylistName}.";
-
-            // Notify the NavMenu componet so it can refresh and get the newly added Playlist
-            CommonDataService.InvokeRefreshNavMenu();
-        }
-
-        PlaylistDialog.Close();
+        
     }
 
     private void CloseInfoMessage()

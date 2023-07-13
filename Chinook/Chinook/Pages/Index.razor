@@ -41,16 +41,38 @@ else
     private List<Artist> OriginalArtists;
     private List<Artist> FilterdArtists;
     private string searchQuery;
-    
-    protected override async Task OnInitializedAsync() {
-        await InvokeAsync(StateHasChanged);
-        OriginalArtists = await IndexPageDataService.GetArtistsAsync();
-        FilterdArtists = OriginalArtists;
+
+    protected override async Task OnInitializedAsync() 
+    {
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+            // Fetch the artists from the database
+            OriginalArtists = await IndexPageDataService.GetArtistsAsync();
+            // Assign the artists from the data based into the filtered list
+            // This list is filtered based on the search query
+            FilterdArtists = OriginalArtists;
+        }
+        catch(Exception ex)
+        {
+            throw new Exception($"An error occured while initializing Index Page. Error : {ex.Message}");
+        }
+
     }    
-    
+
     private void FilterArtists(ChangeEventArgs e)
     {
-        searchQuery = e.Value.ToString();
-        FilterdArtists = OriginalArtists.Where(o => o.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
+        try
+        {
+            // Get thw search query as the user types it in the input box
+            searchQuery = e.Value.ToString();
+            // Filter the Artists based on the search query
+            FilterdArtists = OriginalArtists.Where(o => o.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+        catch(Exception ex)
+        {
+            throw new Exception($"An error occured while filtering the Artists based on the search query. Error : {ex.Message}");
+        }
+
     }
 }

@@ -49,12 +49,14 @@
 
     protected override async Task OnInitializedAsync()
     {
+        
+        // Subscribe to the event that is raised when a new playlist is added
         CommonDataService.RefreshNavMenu += async () => await RefreshNavMenuAsync();
 
         // Get the current user id
         CurrentUserId = await GetUserId();
 
-        if(CurrentUserId is null)
+        if (CurrentUserId is null)
         {
             NavigationManager.NavigateTo("/Identity/Account/Login", true);
         }
@@ -65,30 +67,69 @@
             // Check whether the default playlist is there if not add it
             await NavMenuDataService.AddDefaultPlaylistAsync(CurrentUserId);
 
+            // Load data to the NavMenu component
             await LoadDataAsync();
         }
+        
+
     }
 
     private async Task RefreshNavMenuAsync()
     {
-        await LoadDataAsync();
-        await InvokeAsync(StateHasChanged);
+        try
+        {
+            // Load data again as part of handling the event 
+            await LoadDataAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch(Exception ex)
+        {
+            throw new Exception($"An error occured while refreshing the NavMenu component. Error : {ex.Message}");
+        }
+
     }
 
     public void Dispose()
     {
-        CommonDataService.RefreshNavMenu -= async () => await RefreshNavMenuAsync();
+        try
+        {
+            // Unsubscribe to the event
+            CommonDataService.RefreshNavMenu -= async () => await RefreshNavMenuAsync();
+        }
+        catch(Exception ex)
+        {
+            throw new Exception($"An error occured while unsubscribing to the event. Error : {ex.Message}");
+        }
+
     }
 
     private void NavigateToPlaylist(long Id)
     {
-        string routerPath = $"playlist/{Id.ToString()}";
-        NavigationManager.NavigateTo(routerPath);
+        try
+        {
+            // Navigating to the Playlist page with the given id
+            string routerPath = $"playlist/{Id.ToString()}";
+            NavigationManager.NavigateTo(routerPath);
+        }
+        catch(Exception ex)
+        {
+            throw new Exception($"An error occured while trying to navigate to the Playlist page.. Eror : {ex.Message}");
+        }
+
     }
 
     private async Task LoadDataAsync()
     {
-        CurrentPlaylist = await NavMenuDataService.GetPlaylistsByUserIdAsync(CurrentUserId);
+        try
+        {
+            // Get the Plalists data
+            CurrentPlaylist = await NavMenuDataService.GetPlaylistsByUserIdAsync(CurrentUserId);
+        }
+        catch(Exception ex)
+        {
+            throw new Exception($"An error occured while loading data to NavMenu component. Error : {ex.Message}");
+        }
+
     }
 
     private async Task<string> GetUserId()
